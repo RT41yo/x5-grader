@@ -1,0 +1,76 @@
+services:
+  postgres:
+    image: postgres:16
+    container_name: x5_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${PG_USER}
+      POSTGRES_PASSWORD: ${PG_PASSWORD}
+      POSTGRES_DB: ${PG_DB}        # БД вашего Flask
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+      - ./infra/postgres/init:/docker-entrypoint-initdb.d
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${PG_USER} -d postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  langflow:
+    image: langflowai/langflow:latest
+    container_name: x5_langflow
+    restart: unless-stopped
+    env_file: .env         # для OPENAI_API_KEY и пр.
+    environment:
+      # как в официальной доке — без +asyncpg
+      LANGFLOW_DATABASE_URL: "postgresql://${PG_USER}:${PG_PASSWORD}@postgres:5432/langflow"
+      LANGFLOW_LOAD_FLOWS_PATH: "/flows"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - ./infra/langflow/flows:/flows
+    ports:
+      - "7860:7860"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:7860/api/v1/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  api:
+    build: ./backend
+    container_name: x5_api
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      AUTO_CREATE_TABLES: "1"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      langflow:
+        condition: service_healthy
+    command: >
+      bash -c "
+      gunicorn wsgi:app -b 0.0.0.0:8000 -w 2 -k gevent --timeout 60
+      "
+    volumes:
+      - ./backend:/app
+    ports:
+      - "8000:8000"
+
+  nginx:
+    build: ./infra/nginx
+    container_name: x5_nginx
+    restart: unless-stopped
+    depends_on:
+      - api
+      - langflow
+    ports:
+      - "80:80"
+
+volumes:
+  pg_data:
+  langflow_data:

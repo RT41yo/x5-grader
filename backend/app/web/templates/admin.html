@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% block content %}
+<h2 class="mb-4">Админ-панель</h2>
+
+<!-- Форма создания кейса -->
+<div class="card mb-4">
+  <div class="card-body">
+    <h5 class="card-title">Добавить кейс</h5>
+    <form id="caseForm" class="row g-3">
+      <div class="col-12">
+        <label class="form-label">Название</label>
+        <input type="text" name="title" class="form-control" required />
+      </div>
+      <div class="col-12">
+        <label class="form-label">Описание</label>
+        <textarea name="description" class="form-control" rows="2" required></textarea>
+      </div>
+      <div class="col-12">
+        <label class="form-label">Лучший ответ</label>
+        <textarea name="best_answer" class="form-control" rows="2" required></textarea>
+      </div>
+      <div class="col-12">
+        <label class="form-label">Навыки/критерии (JSON)</label>
+        <textarea
+          name="skills_json"
+          class="form-control font-monospace"
+          rows="4"
+          placeholder='[{"skill":"Коммуникация","criteria":[{"name":"ясность","keywords":["понятно"]}]}]'
+        ></textarea>
+      </div>
+      <div class="col-12">
+        <button type="submit" class="btn btn-success">Сохранить</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Список кейсов -->
+<div class="card">
+  <div class="card-body">
+    <h5 class="card-title">Существующие кейсы</h5>
+    <ul id="casesList" class="list-group"></ul>
+  </div>
+</div>
+{% endblock %}

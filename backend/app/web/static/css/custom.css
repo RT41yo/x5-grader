@@ -1,0 +1,53 @@
+/* ==== Фирменные цвета X5 Group ====
+   Черный   #000000
+   Зеленый  #00A76B
+   Белый    #FFFFFF
+*/
+
+:root {
+  --x5-black: #000000;
+  --x5-green: #00a76b;
+  --x5-white: #ffffff;
+}
+
+/* Общие правки Bootstrap под фирменный стиль */
+body {
+  background-color: #f8f9fa; /* светлый фон */
+  color: var(--x5-black);
+}
+
+a {
+  color: var(--x5-green);
+}
+a:hover {
+  color: #018a59;
+}
+
+.btn-success {
+  background-color: var(--x5-green);
+  border-color: var(--x5-green);
+}
+.btn-success:hover {
+  background-color: #018a59;
+  border-color: #018a59;
+}
+
+.navbar-dark .navbar-brand {
+  color: var(--x5-green) !important;
+}
+.navbar-dark .nav-link {
+  color: #ffffff !important;
+}
+.navbar-dark .nav-link:hover {
+  color: var(--x5-green) !important;
+}
+
+.card-title {
+  color: var(--x5-black);
+  font-weight: 600;
+}
+
+footer {
+  background-color: #f8f9fa;
+  color: #666;
+}

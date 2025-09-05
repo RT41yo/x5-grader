@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block content %}
+<h2 class="mb-4">Сдать решение</h2>
+
+<div class="card">
+  <div class="card-body">
+    <form id="submitForm" class="row g-3">
+      <div class="col-12">
+        <label class="form-label">Выберите кейс</label>
+        <select id="caseSelect" name="case_id" class="form-select" required></select>
+      </div>
+      <div class="col-12">
+        <label class="form-label">Ваш ответ</label>
+        <textarea name="answer_text" class="form-control" rows="4" required></textarea>
+      </div>
+      <input type="hidden" name="user_id" value="demo_user" />
+      <div class="col-12">
+        <button type="submit" class="btn btn-success">Отправить</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
