@@ -1,0 +1,175 @@
+{
+  "data": {
+    "edges": [
+      {
+        "animated": false,
+        "className": "",
+        "data": {
+          "sourceHandle": { "dataType": "Prompt", "id": "Prompt-EXPL", "name": "prompt", "output_types": ["Message"] },
+          "targetHandle": { "fieldName": "system_message", "id": "LanguageModelComponent-EXPL", "inputTypes": ["Message"], "type": "str" }
+        },
+        "id": "edge-Prompt-EXPL->LLM-EXPL",
+        "selected": false,
+        "source": "Prompt-EXPL",
+        "sourceHandle": "{prompt}",
+        "target": "LanguageModelComponent-EXPL",
+        "targetHandle": "{system_message}"
+      },
+      {
+        "animated": false,
+        "className": "",
+        "data": {
+          "sourceHandle": { "dataType": "LanguageModelComponent", "id": "LanguageModelComponent-EXPL", "name": "text_output", "output_types": ["Message"] },
+          "targetHandle": { "fieldName": "input_value", "id": "ChatOutput-EXPL", "inputTypes": ["Data","DataFrame","Message"], "type": "str" }
+        },
+        "id": "edge-LLM-EXPL->ChatOutput-EXPL",
+        "selected": false,
+        "source": "LanguageModelComponent-EXPL",
+        "sourceHandle": "{text_output}",
+        "target": "ChatOutput-EXPL",
+        "targetHandle": "{input_value}"
+      }
+    ],
+    "nodes": [
+      {
+        "data": {
+          "description": "Explain evaluation prompt with variables.",
+          "display_name": "Prompt",
+          "id": "Prompt-EXPL",
+          "node": {
+            "base_classes": ["Message"],
+            "display_name": "Prompt",
+            "description": "Create a prompt template with dynamic variables.",
+            "icon": "braces",
+            "lf_version": "1.5.1",
+            "outputs": [
+              {
+                "allows_loop": false,
+                "cache": true,
+                "display_name": "Prompt",
+                "group_outputs": false,
+                "method": "build_prompt",
+                "name": "prompt",
+                "selected": "Message",
+                "tool_mode": true,
+                "types": ["Message"],
+                "value": "__UNDEFINED__"
+              }
+            ],
+            "template": {
+              "_type": "Component",
+              "template": {
+                "_input_type": "PromptInput",
+                "display_name": "Template",
+                "name": "template",
+                "type": "prompt",
+                "value": "Ты — эксперт-наставник. Задача: кратко и ясно объяснить оценку и дать конкретные шаги улучшения.\n\nДАНО:\nCASE_ID: {{ case_id }}\nCASE_TITLE: {{ case_title }}\nCASE_DESCRIPTION: {{ case_description }}\nBEST_ANSWER: {{ best_answer }}\nSKILLS(JSON): {{ skills }}\nUSER_ANSWER: {{ user_answer }}\nEVALUATION_JSON: {{ evaluation_json }}\nВОПРОС ПОЛЬЗОВАТЕЛЯ: {{ question }}\n\nФормат ответа: чистый текст на русском. Сначала ответь на вопрос, затем:\n- краткое объяснение общей оценки и ключевых навыков;\n- 3–6 конкретных шага улучшений (bullets) с примерами формулировок/действий."
+              }
+            }
+          },
+          "selected_output": "prompt",
+          "type": "Prompt"
+        },
+        "dragging": false,
+        "height": 260,
+        "id": "Prompt-EXPL",
+        "position": { "x": 700, "y": 1020 },
+        "type": "genericNode",
+        "width": 320
+      },
+      {
+        "data": {
+          "id": "LanguageModelComponent-EXPL",
+          "node": {
+            "base_classes": ["LanguageModel", "Message"],
+            "display_name": "Language Model",
+            "description": "Runs a language model given a specified provider.",
+            "icon": "brain-circuit",
+            "lf_version": "1.5.1",
+            "outputs": [
+              {
+                "allows_loop": false,
+                "cache": true,
+                "display_name": "Model Response",
+                "group_outputs": false,
+                "method": "text_response",
+                "name": "text_output",
+                "selected": "Message",
+                "tool_mode": true,
+                "types": ["Message"],
+                "value": "__UNDEFINED__"
+              }
+            ],
+            "template": {
+              "_type": "Component",
+              "provider": { "_input_type": "DropdownInput", "display_name": "Model Provider", "name": "provider", "options": ["OpenAI"], "type": "str", "value": "OpenAI" },
+              "model_name": { "_input_type": "DropdownInput", "display_name": "Model Name", "name": "model_name", "options": ["gpt-4o-mini"], "type": "str", "value": "gpt-4o-mini" },
+              "api_key": { "_input_type": "SecretStrInput", "display_name": "OpenAI API Key", "name": "api_key", "type": "str", "value": "" },
+              "input_value": { "_input_type": "MessageInput", "display_name": "Input", "name": "input_value", "type": "str", "value": "" },
+              "system_message": { "_input_type": "MultilineInput", "display_name": "System Message", "name": "system_message", "type": "str", "value": "" },
+              "stream": { "_input_type": "BoolInput", "display_name": "Stream", "name": "stream", "type": "bool", "value": false },
+              "temperature": { "_input_type": "SliderInput", "display_name": "Temperature", "name": "temperature", "type": "slider", "value": 0.2, "range_spec": { "min": 0, "max": 1, "step": 0.01, "step_type": "float" } }
+            }
+          },
+          "selected_output": "text_output",
+          "showNode": true,
+          "type": "LanguageModelComponent"
+        },
+        "dragging": false,
+        "height": 534,
+        "id": "LanguageModelComponent-EXPL",
+        "position": { "x": 1080, "y": 800 },
+        "type": "genericNode",
+        "width": 320
+      },
+      {
+        "data": {
+          "id": "ChatOutput-EXPL",
+          "node": {
+            "base_classes": ["Message"],
+            "display_name": "Chat Output",
+            "description": "Display a chat message in the Playground.",
+            "icon": "MessagesSquare",
+            "lf_version": "1.5.1",
+            "outputs": [
+              {
+                "allows_loop": false,
+                "cache": true,
+                "display_name": "Output Message",
+                "group_outputs": false,
+                "method": "message_response",
+                "name": "message",
+                "selected": "Message",
+                "tool_mode": true,
+                "types": ["Message"],
+                "value": "__UNDEFINED__"
+              }
+            ],
+            "template": {
+              "_type": "Component",
+              "input_value": { "_input_type": "MessageInput", "display_name": "Inputs", "name": "input_value", "type": "str", "value": "" },
+              "should_store_message": { "_input_type": "BoolInput", "display_name": "Store Messages", "name": "should_store_message", "type": "bool", "value": false },
+              "sender": { "_input_type": "DropdownInput", "display_name": "Sender Type", "name": "sender", "options": ["Machine","User"], "type": "str", "value": "Machine" },
+              "sender_name": { "_input_type": "MessageTextInput", "display_name": "Sender Name", "name": "sender_name", "type": "str", "value": "AI" }
+            }
+          },
+          "type": "ChatOutput"
+        },
+        "dragging": false,
+        "height": 234,
+        "id": "ChatOutput-EXPL",
+        "position": { "x": 1460, "y": 872 },
+        "type": "genericNode",
+        "width": 320
+      }
+    ],
+    "viewport": { "x": -850, "y": -970, "zoom": 1.34 }
+  },
+  "description": "Explain the evaluation in friendly Russian text.",
+  "endpoint_name": null,
+  "id": "explain-evaluation-flow-id",
+  "is_component": false,
+  "last_tested_version": "1.5.1",
+  "name": "ExplainEvaluation",
+  "tags": ["x5", "checker", "explain"]
+}
