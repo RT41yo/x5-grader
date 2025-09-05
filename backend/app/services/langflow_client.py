@@ -23,7 +23,7 @@ FLOW_ID_EVALUATE = os.getenv("FLOW_ID_EVALUATE", "")
 FLOW_ID_EXPLAIN = os.getenv("FLOW_ID_EXPLAIN", "")
 
 # Жёсткие таймауты под SLA ~3с end-to-end
-TIMEOUT = httpx.Timeout(connect=1.0, read=2.0, write=1.0, pool=1.0)
+TIMEOUT = httpx.Timeout(connect=5.0, read=90.0, write=20.0, pool=10.0)
 MAX_RETRIES = 1           # 1 повтор на случай сетевого глитча
 RETRY_BACKOFF = 0.2       # базовый бэкофф (с джиттером)
 
