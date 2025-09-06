@@ -32,8 +32,8 @@ services:
     volumes:
       - ./infra/langflow/flows:/flows:ro
       - langflow_data:/root/.langflow
-    ports:
-      - "7860:7860" # для отладки UI; в проде можно закрыть наружу
+    #ports:
+      #- "7860:7860" # для отладки UI; в проде можно закрыть наружу
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:7860/api/v1/health"]
       interval: 10s

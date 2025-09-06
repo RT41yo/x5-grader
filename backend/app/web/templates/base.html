@@ -19,8 +19,15 @@
     <!-- Навбар -->
     <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
       <div class="container-fluid">
-        <a class="navbar-brand text-success fw-bold" href="{{ url_for('web.submit_page') }}">
-          X5 AI Checker
+        <a class="navbar-brand d-flex align-items-center" href="{{ url_for('web.submit_page') }}">
+          <img 
+            src="{{ url_for('web.static', filename='img/fe4fc03b-535c-41c5-9333-7fc5fc562360-3225582819.jpeg') }}" 
+            alt="X5 Logo" 
+            width="32" 
+            height="32" 
+            class="d-inline-block align-text-top me-2 rounded-circle"
+          />
+          <span class="text-success fw-bold">X5 AI Checker</span>
         </a>
         <div>
           <a class="nav-link d-inline-block text-white" href="{{ url_for('web.admin_page') }}">Админ</a>
