@@ -55,7 +55,7 @@ services:
       postgres:
         condition: service_healthy
       langflow:
-        condition: service_healthy
+        condition: service_started
     volumes:
       - ./backend:/app
     # Не публикуем наружу — доступ к API только через Nginx
@@ -75,7 +75,7 @@ services:
       api:
         condition: service_healthy
       langflow:
-        condition: service_healthy
+        condition: service_started
     ports:
       - "80:80"
     # В проде можно добавить 443:443 и сертификаты
