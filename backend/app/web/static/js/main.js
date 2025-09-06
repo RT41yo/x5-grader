@@ -1,13 +1,13 @@
 // ===== BASE CONFIG =====
 const API_BASE = window.API_BASE || "/api";
 
-// ===== fetch с таймаутом и 1 ретраем =====
+// ===== fetch с таймаутом и настраиваемым числом ретраев =====
 async function fetchWithTimeout(resource, options = {}, timeoutMs = 3500, retries = 1) {
   const attempt = async () => {
     const controller = new AbortController();
     const id = setTimeout(() => controller.abort(), timeoutMs);
     try {
-      const res = await fetch(resource, { ...options, signal: controller.signal });
+      const res = await fetch(resource, { ...options, signal: controller.signal, cache: "no-store", keepalive: false });
       clearTimeout(id);
       return res;
     } catch (e) {
@@ -23,21 +23,32 @@ async function fetchWithTimeout(resource, options = {}, timeoutMs = 3500, retrie
   }
 }
 
-async function apiGet(path) {
+// Универсальные хелперы: можно передать {timeoutMs, retries}
+async function apiGet(path, opts = {}) {
   const url = API_BASE + path;
-  const res = await fetchWithTimeout(url, { method: "GET" });
+  const timeoutMs = opts.timeoutMs ?? 5000;
+  const retries   = opts.retries   ?? 1;
+  const res = await fetchWithTimeout(url, { method: "GET" }, timeoutMs, retries);
   if (!res.ok) throw new Error(`Ошибка GET ${url} (${res.status})`);
   const text = await res.text();
   return text ? JSON.parse(text) : null;
 }
 
-async function apiPost(path, data) {
+// По умолчанию для POST — без ретраев (чтобы не дублировать создание/оценку)
+async function apiPost(path, data, opts = {}) {
   const url = API_BASE + path;
-  const res = await fetchWithTimeout(url, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(data ?? {}),
-  });
+  const timeoutMs = opts.timeoutMs ?? 30000; // дефолт подлиннее, чем у GET
+  const retries   = opts.retries   ?? 0;     // ВАЖНО: 0, чтобы не было дублей POST
+  const res = await fetchWithTimeout(
+    url,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data ?? {}),
+    },
+    timeoutMs,
+    retries
+  );
   if (!res.ok) throw new Error(`Ошибка POST ${url} (${res.status})`);
   const text = await res.text();
   return text ? JSON.parse(text) : null;
@@ -56,9 +67,13 @@ const caseForm = document.getElementById("caseForm");
 const casesList = document.getElementById("casesList");
 
 if (caseForm) {
+  // На всякий случай: не даём форме сабмититься нативно
+  caseForm.addEventListener("submit", (e) => e.preventDefault());
+
   caseForm.addEventListener("submit", async (e) => {
     e.preventDefault();
     const btn = caseForm.querySelector("button[type=submit]");
+    if (btn.disabled) return; // защита от дабл-клика
     btn.disabled = true;
 
     const formData = Object.fromEntries(new FormData(caseForm).entries());
@@ -73,7 +88,7 @@ if (caseForm) {
     }
 
     try {
-      await apiPost("/admin/cases", formData);
+      await apiPost("/admin/cases", formData, { timeoutMs: 15000, retries: 0 });
       caseForm.reset();
       await loadCases();
       alert("Кейс добавлен!");
@@ -86,7 +101,7 @@ if (caseForm) {
 
   async function loadCases() {
     try {
-      const data = (await apiGet("/admin/cases")) || [];
+      const data = (await apiGet("/admin/cases", { timeoutMs: 8000, retries: 1 })) || [];
       casesList.innerHTML = "";
       data.forEach((c) => {
         const li = el("li", "list-group-item d-flex justify-content-between align-items-center");
@@ -101,6 +116,7 @@ if (caseForm) {
         casesList.appendChild(li);
       });
     } catch (err) {
+      console.error(err);
       casesList.innerHTML = '<li class="list-group-item text-danger">Ошибка загрузки</li>';
     }
   }
@@ -112,9 +128,29 @@ const submitForm = document.getElementById("submitForm");
 const caseSelect = document.getElementById("caseSelect");
 
 if (submitForm && caseSelect) {
+  // Не даём нативному сабмиту увести страницу
+  submitForm.addEventListener("submit", (e) => {
+    e.preventDefault();
+    sendSolution();
+  });
+
+  // Если кнопка у тебя type="button" — ловим клик тоже
+  const submitBtn =
+    document.getElementById("submitBtn") ||
+    submitForm.querySelector('button[type="submit"]') ||
+    submitForm.querySelector("button");
+
+  if (submitBtn) {
+    submitBtn.addEventListener("click", (e) => {
+      e.preventDefault();
+      sendSolution();
+    });
+  }
+
+  // Загрузка кейсов
   (async () => {
     try {
-      const data = (await apiGet("/admin/cases")) || [];
+      const data = (await apiGet("/admin/cases", { timeoutMs: 8000, retries: 1 })) || [];
       caseSelect.innerHTML = "";
       const placeholder = el("option", null, "Выберите кейс");
       placeholder.disabled = true; placeholder.selected = true;
@@ -139,27 +175,41 @@ if (submitForm && caseSelect) {
     });
   }
 
-  submitForm.addEventListener("submit", async (e) => {
-    e.preventDefault();
-    const btn = submitForm.querySelector("button[type=submit]");
-    btn.disabled = true; btn.textContent = "Отправка…";
+  let sendingSubmit = false;
+  async function sendSolution() {
+    if (sendingSubmit) return;
+    const btn =
+      document.getElementById("submitBtn") ||
+      submitForm.querySelector('button[type="submit"]') ||
+      submitForm.querySelector("button");
 
     const formData = Object.fromEntries(new FormData(submitForm).entries());
     if (!formData.case_id) {
       alert("Пожалуйста, выберите кейс.");
-      btn.disabled = false; btn.textContent = "Отправить";
       return;
     }
+
     try {
-      const res = await apiPost("/submit_solution", formData);
-      if (!res?.session_id) throw new Error("Некорректный ответ API");
+      sendingSubmit = true;
+      if (btn) { btn.disabled = true; btn.textContent = "Отправка…"; }
+
+      // Длинный таймаут и без ретраев — чтобы не было дублей
+      const res = await apiPost("/submit_solution", formData, { timeoutMs: 90000, retries: 0 });
+      if (!res?.session_id) throw new Error("Некорректный ответ API: нет session_id");
+
       window.location.assign(`/result/${res.session_id}`);
     } catch (err) {
-      alert("Ошибка отправки решения: " + err.message);
+      const msg = String(err?.message || err || "");
+      if (msg.toLowerCase().includes("abort")) {
+        alert("Браузер прервал запрос. Попробуйте ещё раз или используйте другой браузер.");
+      } else {
+        alert("Ошибка отправки решения: " + msg);
+      }
     } finally {
-      btn.disabled = false; btn.textContent = "Отправить";
+      sendingSubmit = false;
+      if (btn) { btn.disabled = false; btn.textContent = "Отправить"; }
     }
-  });
+  }
 }
 
 // ===== RESULT PAGE =====
@@ -230,7 +280,7 @@ function renderEvaluation(container, data) {
 if (resultBlock && typeof window.sessionId !== "undefined") {
   (async () => {
     try {
-      const data = await apiGet(`/result/${window.sessionId}`);
+      const data = await apiGet(`/result/${window.sessionId}`, { timeoutMs: 15000, retries: 1 });
       if (!data) {
         resultBlock.textContent = "Пока нет данных.";
         return;
@@ -244,7 +294,8 @@ if (resultBlock && typeof window.sessionId !== "undefined") {
 
 // ===== CHAT =====
 if (chatSend && chatInput && chatBox && typeof window.sessionId !== "undefined") {
-  let sending = false;
+  let sendingChat = false;
+
   chatSend.addEventListener("click", sendChat);
   chatInput.addEventListener("keydown", (e) => {
     if (e.key === "Enter" && !e.shiftKey) {
@@ -262,18 +313,19 @@ if (chatSend && chatInput && chatBox && typeof window.sessionId !== "undefined")
 
   async function sendChat() {
     const text = chatInput.value.trim();
-    if (!text || sending) return;
-    sending = true;
+    if (!text || sendingChat) return;
+    sendingChat = true;
     chatInput.value = "";
     appendMessage("Вы", text);
 
     try {
-      const res = await apiPost("/ask", { session_id: window.sessionId, question: text });
+      // Длинный таймаут и без ретраев — чтобы не дублировать вопросы
+      const res = await apiPost("/ask", { session_id: window.sessionId, question: text }, { timeoutMs: 60000, retries: 0 });
       appendMessage("AI", (res && res.answer) || "Нет ответа");
     } catch (err) {
-      appendMessage("AI", "Ошибка: " + err.message);
+      appendMessage("AI", "Ошибка: " + (err.message || String(err)));
     } finally {
-      sending = false;
+      sendingChat = false;
     }
   }
 }
