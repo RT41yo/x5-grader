@@ -9,13 +9,31 @@
         <label class="form-label">Выберите кейс</label>
         <select id="caseSelect" name="case_id" class="form-select" required></select>
       </div>
+
       <div class="col-12">
         <label class="form-label">Ваш ответ</label>
         <textarea name="answer_text" class="form-control" rows="4" required></textarea>
       </div>
+
       <input type="hidden" name="user_id" value="demo_user" />
+
+      <div class="col-12 d-flex align-items-center gap-3">
+        <!-- ВАЖНО: type="submit", чтобы сработал submit-обработчик в main.js -->
+        <button id="submitBtn" type="submit" class="btn btn-success">Отправить</button>
+
+        <!-- Лёгкий индикатор статуса -->
+        <div id="submitStatus" class="d-none">
+          <div class="progress" style="width: 260px;">
+            <div id="submitProgress" class="progress-bar progress-bar-striped progress-bar-animated" style="width: 25%;">
+              Отправка…
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Текстовый статус (ошибки/успех) -->
       <div class="col-12">
-        <button id="submitBtn" type="button" class="btn btn-success">Отправить</button>
+        <small id="submitStatusText" class="text-muted"></small>
       </div>
     </form>
   </div>

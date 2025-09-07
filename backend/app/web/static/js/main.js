@@ -67,14 +67,12 @@ const caseForm = document.getElementById("caseForm");
 const casesList = document.getElementById("casesList");
 
 if (caseForm) {
-  // На всякий случай: не даём форме сабмититься нативно
-  caseForm.addEventListener("submit", (e) => e.preventDefault());
-
+  // Один обработчик submit — без дублирования
   caseForm.addEventListener("submit", async (e) => {
     e.preventDefault();
     const btn = caseForm.querySelector("button[type=submit]");
-    if (btn.disabled) return; // защита от дабл-клика
-    btn.disabled = true;
+    if (btn?.disabled) return; // защита от дабл-клика
+    if (btn) btn.disabled = true;
 
     const formData = Object.fromEntries(new FormData(caseForm).entries());
     try {
@@ -83,7 +81,7 @@ if (caseForm) {
         : [];
     } catch {
       alert("Поле 'Навыки/критерии' должно быть валидным JSON.");
-      btn.disabled = false;
+      if (btn) btn.disabled = false;
       return;
     }
 
@@ -95,7 +93,7 @@ if (caseForm) {
     } catch (err) {
       alert("Ошибка при добавлении кейса: " + err.message);
     } finally {
-      btn.disabled = false;
+      if (btn) btn.disabled = false;
     }
   });
 
@@ -128,18 +126,19 @@ const submitForm = document.getElementById("submitForm");
 const caseSelect = document.getElementById("caseSelect");
 
 if (submitForm && caseSelect) {
+  // Элементы статуса
+  const submitBtn = document.getElementById("submitBtn") || submitForm.querySelector('button[type="submit"]');
+  const statusWrap = document.getElementById("submitStatus");      // контейнер со шкалой
+  const statusBar  = document.getElementById("submitProgress");    // внутренняя полоса прогресса
+  const statusText = document.getElementById("submitStatusText");  // подпись-сообщение
+
   // Не даём нативному сабмиту увести страницу
   submitForm.addEventListener("submit", (e) => {
     e.preventDefault();
     sendSolution();
   });
 
-  // Если кнопка у тебя type="button" — ловим клик тоже
-  const submitBtn =
-    document.getElementById("submitBtn") ||
-    submitForm.querySelector('button[type="submit"]') ||
-    submitForm.querySelector("button");
-
+  // Если кнопка имеет type="button" — ловим клик тоже (перестраховка)
   if (submitBtn) {
     submitBtn.addEventListener("click", (e) => {
       e.preventDefault();
@@ -175,13 +174,52 @@ if (submitForm && caseSelect) {
     });
   }
 
+  // Простая анимация прогресса (имитация ожидания)
+  let progressTimer = null;
+  function showStatus(startLabel = "Отправка…") {
+    if (statusWrap) statusWrap.classList.remove("d-none");
+    if (statusText) statusText.classList.remove("text-danger", "text-success");
+    if (statusText) statusText.textContent = startLabel;
+    if (statusBar) {
+      statusBar.style.width = "10%";
+      statusBar.textContent = startLabel;
+    }
+    // Плавно растим прогресс до 90%
+    let val = 10;
+    clearInterval(progressTimer);
+    progressTimer = setInterval(() => {
+      val = Math.min(val + 5, 90);
+      if (statusBar) statusBar.style.width = val + "%";
+    }, 600);
+  }
+  function finishStatus(ok, label) {
+    clearInterval(progressTimer);
+    if (statusBar) {
+      statusBar.style.width = "100%";
+      statusBar.textContent = ok ? "Готово" : "Ошибка";
+    }
+    if (statusText) {
+      statusText.textContent = label || (ok ? "Готово" : "Ошибка");
+      statusText.classList.toggle("text-success", ok);
+      statusText.classList.toggle("text-danger", !ok);
+    }
+  }
+  function hideStatus() {
+    clearInterval(progressTimer);
+    if (statusWrap) statusWrap.classList.add("d-none");
+    if (statusText) {
+      statusText.textContent = "";
+      statusText.classList.remove("text-danger", "text-success");
+    }
+    if (statusBar) {
+      statusBar.style.width = "0%";
+      statusBar.textContent = "";
+    }
+  }
+
   let sendingSubmit = false;
   async function sendSolution() {
     if (sendingSubmit) return;
-    const btn =
-      document.getElementById("submitBtn") ||
-      submitForm.querySelector('button[type="submit"]') ||
-      submitForm.querySelector("button");
 
     const formData = Object.fromEntries(new FormData(submitForm).entries());
     if (!formData.case_id) {
@@ -191,23 +229,30 @@ if (submitForm && caseSelect) {
 
     try {
       sendingSubmit = true;
-      if (btn) { btn.disabled = true; btn.textContent = "Отправка…"; }
+      if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = "Отправка…"; }
+      showStatus("Отправка…");
 
       // Длинный таймаут и без ретраев — чтобы не было дублей
-      const res = await apiPost("/submit_solution", formData, { timeoutMs: 90000, retries: 0 });
+      const res = await apiPost("/submit_solution", formData, { timeoutMs: 120000, retries: 0 });
       if (!res?.session_id) throw new Error("Некорректный ответ API: нет session_id");
 
-      window.location.assign(`/result/${res.session_id}`);
+      finishStatus(true, "Оценка получена, открываю результат…");
+      // Небольшая задержка, чтобы пользователь увидел «100%»
+      setTimeout(() => {
+        window.location.assign(`/result/${res.session_id}`);
+      }, 400);
     } catch (err) {
       const msg = String(err?.message || err || "");
       if (msg.toLowerCase().includes("abort")) {
-        alert("Браузер прервал запрос. Попробуйте ещё раз или используйте другой браузер.");
+        finishStatus(false, "Браузер прервал запрос. Попробуйте ещё раз.");
       } else {
-        alert("Ошибка отправки решения: " + msg);
+        finishStatus(false, "Ошибка отправки: " + msg);
       }
+      // через пару секунд скрываем статус, чтобы не мешал повторной отправке
+      setTimeout(hideStatus, 2500);
     } finally {
       sendingSubmit = false;
-      if (btn) { btn.disabled = false; btn.textContent = "Отправить"; }
+      if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = "Отправить"; }
     }
   }
 }
