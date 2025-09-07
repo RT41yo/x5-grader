@@ -26,6 +26,9 @@ services:
     environment:
       LANGFLOW_DATABASE_URL: "postgresql://${PG_USER}:${PG_PASSWORD}@postgres:5432/langflow"
       LANGFLOW_LOAD_FLOWS_PATH: "/flows"
+      WEB_CONCURRENCY: "1"
+      TIMEOUT: "180"
+      DO_NOT_TRACK: "true"
     depends_on:
       postgres:
         condition: service_healthy
