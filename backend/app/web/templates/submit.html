@@ -10,9 +10,24 @@
         <select id="caseSelect" name="case_id" class="form-select" required></select>
       </div>
 
+      <!-- ОПИСАНИЕ ВЫБРАННОГО КЕЙСА -->
+      <div class="col-12 d-none" id="caseDetails">
+        <div class="card border-success-subtle">
+          <div class="card-body">
+            <h5 class="card-title mb-2" id="caseTitle"></h5>
+            <p class="card-text mb-0" id="caseDescription" style="white-space: pre-line;"></p>
+            <div id="caseSkills" class="mt-3 d-none">
+              <strong>Навыки/критерии:</strong>
+              <ul class="mb-0" id="caseSkillsList"></ul>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <div class="col-12">
         <label class="form-label">Ваш ответ</label>
-        <textarea name="answer_text" class="form-control" rows="4" required></textarea>
+        <textarea name="answer_text" class="form-control" rows="6" required
+                  placeholder="Опишите ваше решение по кейсу..."></textarea>
       </div>
 
       <input type="hidden" name="user_id" value="demo_user" />
@@ -21,12 +36,12 @@
         <!-- ВАЖНО: type="submit", чтобы сработал submit-обработчик в main.js -->
         <button id="submitBtn" type="submit" class="btn btn-success">Отправить</button>
 
-        <!-- Лёгкий индикатор статуса -->
+        <!-- Индикатор статуса -->
         <div id="submitStatus" class="d-none">
           <div class="progress" style="width: 260px;">
-            <div id="submitProgress" class="progress-bar progress-bar-striped progress-bar-animated bg-success" style="width: 25%;">
-              Отправка…
-            </div>
+            <div id="submitProgress"
+                 class="progress-bar bg-success progress-bar-striped progress-bar-animated"
+                 style="width: 25%;">Отправка…</div>
           </div>
         </div>
       </div>

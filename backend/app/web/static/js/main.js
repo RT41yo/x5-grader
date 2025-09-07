@@ -125,20 +125,56 @@ if (caseForm) {
 const submitForm = document.getElementById("submitForm");
 const caseSelect = document.getElementById("caseSelect");
 
-if (submitForm && caseSelect) {
-  // Элементы статуса
-  const submitBtn = document.getElementById("submitBtn") || submitForm.querySelector('button[type="submit"]');
-  const statusWrap = document.getElementById("submitStatus");      // контейнер со шкалой
-  const statusBar  = document.getElementById("submitProgress");    // внутренняя полоса прогресса
-  const statusText = document.getElementById("submitStatusText");  // подпись-сообщение
+// элементы для описания кейса
+const caseDetails   = document.getElementById("caseDetails");
+const caseTitleEl   = document.getElementById("caseTitle");
+const caseDescEl    = document.getElementById("caseDescription");
+const caseSkillsBox = document.getElementById("caseSkills");
+const caseSkillsUl  = document.getElementById("caseSkillsList");
 
-  // Не даём нативному сабмиту увести страницу
+// локальный кеш кейсов, чтобы быстро показать описание по change
+let casesCache = [];
+
+function renderCaseDetailsById(caseId) {
+  if (!caseId || !casesCache?.length) return;
+  const found = casesCache.find(c => String(c.id) === String(caseId));
+  if (!found) {
+    caseDetails?.classList.add("d-none");
+    return;
+  }
+  // заголовок + описание
+  caseTitleEl.textContent = found.title || "Кейс";
+  caseDescEl.textContent  = found.description || "Описание отсутствует.";
+
+  // опционально показываем навыки/критерии, если есть
+  caseSkillsUl.innerHTML = "";
+  const skills = Array.isArray(found.skills_json) ? found.skills_json : [];
+  if (skills.length) {
+    skills.forEach(s => {
+      const li = document.createElement("li");
+      li.textContent = s?.name || String(s);
+      caseSkillsUl.appendChild(li);
+    });
+    caseSkillsBox.classList.remove("d-none");
+  } else {
+    caseSkillsBox.classList.add("d-none");
+  }
+
+  caseDetails.classList.remove("d-none");
+}
+
+if (submitForm && caseSelect) {
+  // запрет нативного сабмита
   submitForm.addEventListener("submit", (e) => {
     e.preventDefault();
     sendSolution();
   });
 
-  // Если кнопка имеет type="button" — ловим клик тоже (перестраховка)
+  const submitBtn =
+    document.getElementById("submitBtn") ||
+    submitForm.querySelector('button[type="submit"]') ||
+    submitForm.querySelector("button");
+
   if (submitBtn) {
     submitBtn.addEventListener("click", (e) => {
       e.preventDefault();
@@ -146,24 +182,35 @@ if (submitForm && caseSelect) {
     });
   }
 
-  // Загрузка кейсов
+  // Загрузка кейсов и заполнение селекта
   (async () => {
     try {
       const data = (await apiGet("/admin/cases", { timeoutMs: 8000, retries: 1 })) || [];
+      casesCache = data;
       caseSelect.innerHTML = "";
-      const placeholder = el("option", null, "Выберите кейс");
-      placeholder.disabled = true; placeholder.selected = true;
+      const placeholder = document.createElement("option");
+      placeholder.textContent = "Выберите кейс";
+      placeholder.disabled = true;
+      placeholder.selected = true;
       caseSelect.appendChild(placeholder);
+
       data.forEach((c) => {
-        const opt = el("option", null, c.title ?? "");
+        const opt = document.createElement("option");
         opt.value = c.id;
+        opt.textContent = c.title ?? "";
         caseSelect.appendChild(opt);
+      });
+
+      // показываем описание, когда пользователь выбрал кейс
+      caseSelect.addEventListener("change", () => {
+        renderCaseDetailsById(caseSelect.value);
       });
     } catch (err) {
       alert("Ошибка загрузки кейсов: " + err.message);
     }
   })();
 
+  // ограничение длины ответа
   const answerEl = submitForm.querySelector('textarea[name="answer_text"]');
   const MAX_LEN = 6000;
   if (answerEl) {
@@ -174,52 +221,13 @@ if (submitForm && caseSelect) {
     });
   }
 
-  // Простая анимация прогресса (имитация ожидания)
-  let progressTimer = null;
-  function showStatus(startLabel = "Отправка…") {
-    if (statusWrap) statusWrap.classList.remove("d-none");
-    if (statusText) statusText.classList.remove("text-danger", "text-success");
-    if (statusText) statusText.textContent = startLabel;
-    if (statusBar) {
-      statusBar.style.width = "10%";
-      statusBar.textContent = startLabel;
-    }
-    // Плавно растим прогресс до 90%
-    let val = 10;
-    clearInterval(progressTimer);
-    progressTimer = setInterval(() => {
-      val = Math.min(val + 5, 90);
-      if (statusBar) statusBar.style.width = val + "%";
-    }, 600);
-  }
-  function finishStatus(ok, label) {
-    clearInterval(progressTimer);
-    if (statusBar) {
-      statusBar.style.width = "100%";
-      statusBar.textContent = ok ? "Готово" : "Ошибка";
-    }
-    if (statusText) {
-      statusText.textContent = label || (ok ? "Готово" : "Ошибка");
-      statusText.classList.toggle("text-success", ok);
-      statusText.classList.toggle("text-danger", !ok);
-    }
-  }
-  function hideStatus() {
-    clearInterval(progressTimer);
-    if (statusWrap) statusWrap.classList.add("d-none");
-    if (statusText) {
-      statusText.textContent = "";
-      statusText.classList.remove("text-danger", "text-success");
-    }
-    if (statusBar) {
-      statusBar.style.width = "0%";
-      statusBar.textContent = "";
-    }
-  }
-
   let sendingSubmit = false;
   async function sendSolution() {
     if (sendingSubmit) return;
+    const btn =
+      document.getElementById("submitBtn") ||
+      submitForm.querySelector('button[type="submit"]') ||
+      submitForm.querySelector("button");
 
     const formData = Object.fromEntries(new FormData(submitForm).entries());
     if (!formData.case_id) {
@@ -229,30 +237,24 @@ if (submitForm && caseSelect) {
 
     try {
       sendingSubmit = true;
-      if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = "Отправка…"; }
-      showStatus("Отправка…");
+      if (btn) { btn.disabled = true; btn.textContent = "Отправка…"; }
+      document.getElementById("submitStatus")?.classList.remove("d-none");
+      const txt = document.getElementById("submitStatusText");
+      if (txt) txt.textContent = "Мы отправили ваше решение на оценку…";
 
-      // Длинный таймаут и без ретраев — чтобы не было дублей
-      const res = await apiPost("/submit_solution", formData, { timeoutMs: 120000, retries: 0 });
+      const res = await apiPost("/submit_solution", formData, { timeoutMs: 90000, retries: 0 });
       if (!res?.session_id) throw new Error("Некорректный ответ API: нет session_id");
 
-      finishStatus(true, "Оценка получена, открываю результат…");
-      // Небольшая задержка, чтобы пользователь увидел «100%»
-      setTimeout(() => {
-        window.location.assign(`/result/${res.session_id}`);
-      }, 400);
+      window.location.assign(`/result/${res.session_id}`);
     } catch (err) {
       const msg = String(err?.message || err || "");
-      if (msg.toLowerCase().includes("abort")) {
-        finishStatus(false, "Браузер прервал запрос. Попробуйте ещё раз.");
-      } else {
-        finishStatus(false, "Ошибка отправки: " + msg);
-      }
-      // через пару секунд скрываем статус, чтобы не мешал повторной отправке
-      setTimeout(hideStatus, 2500);
+      alert("Ошибка отправки решения: " + msg);
+      const txt = document.getElementById("submitStatusText");
+      if (txt) txt.textContent = "Ошибка: " + msg;
     } finally {
       sendingSubmit = false;
-      if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = "Отправить"; }
+      if (btn) { btn.disabled = false; btn.textContent = "Отправить"; }
+      document.getElementById("submitStatus")?.classList.add("d-none");
     }
   }
 }
