@@ -275,9 +275,8 @@ function renderEvaluation(container, data) {
   const score = Number(data.overall_score ?? 0);
   header.appendChild(el("p", null, `Общая оценка: ${score}`));
 
-  // Прогрессбар
   const prog = el("div", "progress mb-3");
-  const progInner = el("div", "progress-bar");
+  const progInner = el("div", "progress-bar bg-success");
   progInner.style.width = Math.min(100, Math.max(0, score)) + "%";
   progInner.textContent = score + "%";
   prog.appendChild(progInner);
@@ -286,16 +285,17 @@ function renderEvaluation(container, data) {
   // Навыки и критерии
   if (Array.isArray(data.skills)) {
     data.skills.forEach((s) => {
-      const card = el("div", "card mb-2");
+      const card = el("div", "card mb-3");
       const body = el("div", "card-body");
-      const title = el("h6", "card-title", `${s.name ?? "Навык"} — ${s.skill_score ?? "-"}`);
+      const title = el("h6", "card-title mb-3", `${s.name ?? "Навык"} — ${s.skill_score ?? "-"}`);
       body.appendChild(title);
 
+      // Таблица критериев (3 колонки)
       if (Array.isArray(s.criteria) && s.criteria.length) {
-        const table = el("table", "table table-sm");
+        const table = el("table", "table table-sm mb-3");
         const thead = el("thead");
         const trh = el("tr");
-        ["Критерий", "Балл", "Доказательство", "Рекомендация"].forEach((h) => trh.appendChild(el("th", null, h)));
+        ["Критерий", "Балл", "Доказательство"].forEach((h) => trh.appendChild(el("th", null, h)));
         thead.appendChild(trh);
         const tbody = el("tbody");
         s.criteria.forEach((c) => {
@@ -303,15 +303,16 @@ function renderEvaluation(container, data) {
           tr.appendChild(el("td", null, c.name ?? ""));
           tr.appendChild(el("td", null, String(c.score ?? "")));
           tr.appendChild(el("td", null, c.evidence ?? ""));
-          tr.appendChild(el("td", null, c.suggestion ?? ""));
           tbody.appendChild(tr);
         });
         table.append(thead, tbody);
         body.appendChild(table);
       }
 
+      // Рекомендации по навыку
       if (Array.isArray(s.improvement_plan) && s.improvement_plan.length) {
-        const ul = el("ul");
+        body.appendChild(el("div", "fw-semibold mb-1", "Рекомендации"));
+        const ul = el("ul", "mb-0");
         s.improvement_plan.forEach((step) => ul.appendChild(el("li", null, step)));
         body.appendChild(ul);
       }
