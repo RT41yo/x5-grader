@@ -146,15 +146,44 @@ function renderCaseDetailsById(caseId) {
   caseTitleEl.textContent = found.title || "Кейс";
   caseDescEl.textContent  = found.description || "Описание отсутствует.";
 
-  // опционально показываем навыки/критерии, если есть
+  // --- Навыки/критерии (человекочитаемо) ---
   caseSkillsUl.innerHTML = "";
   const skills = Array.isArray(found.skills_json) ? found.skills_json : [];
+
   if (skills.length) {
-    skills.forEach(s => {
+    skills.forEach((s, i) => {
       const li = document.createElement("li");
-      li.textContent = s?.name || String(s);
+
+      if (typeof s === "string") {
+        // если админ ввёл просто строки
+        li.textContent = s;
+      } else if (s && typeof s === "object") {
+        // ожидаемый формат: { name: "...", criteria: [{ name: "..." }, ...] }
+        const skillName = s.name || s.skill || `Навык ${i + 1}`;
+        li.innerHTML = `<strong>${skillName}</strong>`;
+
+        if (Array.isArray(s.criteria) && s.criteria.length) {
+          const ul = document.createElement("ul");
+          s.criteria.forEach((c, j) => {
+            const ci = document.createElement("li");
+            if (typeof c === "string") {
+              ci.textContent = c;
+            } else if (c && typeof c === "object") {
+              ci.textContent = c.name || `Критерий ${j + 1}`;
+            } else {
+              ci.textContent = String(c);
+            }
+            ul.appendChild(ci);
+          });
+          li.appendChild(ul);
+        }
+      } else {
+        li.textContent = String(s);
+      }
+
       caseSkillsUl.appendChild(li);
     });
+
     caseSkillsBox.classList.remove("d-none");
   } else {
     caseSkillsBox.classList.add("d-none");
