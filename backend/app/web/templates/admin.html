@@ -13,20 +13,24 @@
       </div>
       <div class="col-12">
         <label class="form-label">Описание</label>
-        <textarea name="description" class="form-control" rows="2" required></textarea>
+        <textarea name="description" class="form-control" rows="3" required></textarea>
       </div>
       <div class="col-12">
         <label class="form-label">Лучший ответ</label>
-        <textarea name="best_answer" class="form-control" rows="2" required></textarea>
+        <textarea name="best_answer" class="form-control" rows="3" required></textarea>
       </div>
       <div class="col-12">
         <label class="form-label">Навыки/критерии (JSON)</label>
         <textarea
           name="skills_json"
           class="form-control font-monospace"
-          rows="4"
-          placeholder='[{"skill":"Коммуникация","criteria":[{"name":"ясность","keywords":["понятно"]}]}]'
+          rows="6"
+          placeholder='[
+  {"skill":"Коммерческое мышление","criteria":[{"name":"Диагностика причин"},{"name":"План действий"}]},
+  {"skill":"Коммуникации","criteria":[{"name":"Структура и ясность"}]}
+]'
         ></textarea>
+        <div class="form-text">Поддерживаются ключи <code>skill</code> или <code>name</code> для названия навыка; у критериев достаточно <code>name</code>.</div>
       </div>
       <div class="col-12">
         <button type="submit" class="btn btn-success">Сохранить</button>
@@ -35,11 +39,11 @@
   </div>
 </div>
 
-<!-- Список кейсов -->
+<!-- Список кейсов (аккордеон) -->
 <div class="card">
   <div class="card-body">
-    <h5 class="card-title">Существующие кейсы</h5>
-    <ul id="casesList" class="list-group"></ul>
+    <h5 class="card-title mb-3">Существующие кейсы</h5>
+    <div id="casesAccordion" class="accordion"></div>
   </div>
 </div>
 {% endblock %}

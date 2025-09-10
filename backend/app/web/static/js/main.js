@@ -64,7 +64,7 @@ function el(tag, cls, text) {
 
 // ===== ADMIN PAGE =====
 const caseForm = document.getElementById("caseForm");
-const casesList = document.getElementById("casesList");
+const casesAccordion = document.getElementById("casesAccordion");
 
 if (caseForm) {
   // Один обработчик submit — без дублирования
@@ -100,24 +100,116 @@ if (caseForm) {
   async function loadCases() {
     try {
       const data = (await apiGet("/admin/cases", { timeoutMs: 8000, retries: 1 })) || [];
-      casesList.innerHTML = "";
-      data.forEach((c) => {
-        const li = el("li", "list-group-item d-flex justify-content-between align-items-center");
-        const left = el("span");
-        const strong = el("strong", null, c.title ?? "");
-        left.appendChild(strong);
-        if (c.description) {
-          left.append(" — " + c.description);
+      const acc = casesAccordion;
+      if (!acc) return;
+
+      acc.innerHTML = "";
+
+      if (!data.length) {
+        acc.innerHTML = '<div class="text-muted">Кейсов пока нет.</div>';
+        return;
+      }
+
+      data.forEach((c, idx) => {
+        const caseId = String(c.id ?? idx);
+        const item    = document.createElement("div");
+        item.className = "accordion-item";
+
+        const headerId   = `case-h-${caseId}`;
+        const collapseId = `case-c-${caseId}`;
+
+        const h = document.createElement("h2");
+        h.className = "accordion-header";
+        h.id = headerId;
+
+        const btn = document.createElement("button");
+        btn.className = "accordion-button collapsed";
+        btn.type = "button";
+        btn.setAttribute("data-bs-toggle", "collapse");
+        btn.setAttribute("data-bs-target", `#${collapseId}`);
+        btn.setAttribute("aria-expanded", "false");
+        btn.setAttribute("aria-controls", collapseId);
+        btn.textContent = c.title ?? `Кейс #${caseId}`;
+
+        const skills = Array.isArray(c.skills_json) ? c.skills_json : [];
+        const badge = document.createElement("span");
+        badge.className = "badge bg-secondary ms-2";
+        badge.textContent = `${skills.length} навыков`;
+        btn.appendChild(badge);
+
+        h.appendChild(btn);
+
+        const bodyWrap = document.createElement("div");
+        bodyWrap.id = collapseId;
+        bodyWrap.className = "accordion-collapse collapse";
+        bodyWrap.setAttribute("aria-labelledby", headerId);
+        bodyWrap.setAttribute("data-bs-parent", "#casesAccordion");
+
+        const body = document.createElement("div");
+        body.className = "accordion-body";
+
+        // Описание
+        body.appendChild(el("div", "fw-semibold mb-1", "Описание"));
+        const desc = document.createElement("p");
+        desc.className = "mb-2";
+        desc.style.whiteSpace = "pre-line";
+        desc.textContent = c.description || "—";
+        body.appendChild(desc);
+
+        // Лучший ответ
+        body.appendChild(el("div", "fw-semibold mt-3 mb-1", "Лучший ответ"));
+        const pre = document.createElement("pre");
+        pre.className = "mb-0 small";
+        pre.textContent = c.best_answer || "—";
+        body.appendChild(pre);
+
+        // Навыки/критерии
+        if (skills.length) {
+          body.appendChild(el("div", "fw-semibold mt-3 mb-1", "Навыки/критерии"));
+          const list = document.createElement("ul");
+          skills.forEach((s, i) => {
+            const li = document.createElement("li");
+            if (s && typeof s === "object") {
+              const skillName = s.name || s.skill || `Навык ${i + 1}`;
+              const title = document.createElement("strong");
+              title.textContent = skillName;
+              li.appendChild(title);
+
+              if (Array.isArray(s.criteria) && s.criteria.length) {
+                const ul = document.createElement("ul");
+                s.criteria.forEach((cr, j) => {
+                  const ci = document.createElement("li");
+                  if (cr && typeof cr === "object") {
+                    ci.textContent = cr.name || `Критерий ${j + 1}`;
+                  } else {
+                    ci.textContent = String(cr);
+                  }
+                  ul.appendChild(ci);
+                });
+                li.appendChild(ul);
+              }
+            } else {
+              li.textContent = String(s);
+            }
+            list.appendChild(li);
+          });
+          body.appendChild(list);
         }
-        const badge = el("span", "badge bg-secondary", (c.skills_json?.length ?? 0) + " навыков");
-        li.append(left, badge);
-        casesList.appendChild(li);
+
+        bodyWrap.appendChild(body);
+        item.appendChild(h);
+        item.appendChild(bodyWrap);
+        acc.appendChild(item);
       });
     } catch (err) {
       console.error(err);
-      casesList.innerHTML = '<li class="list-group-item text-danger">Ошибка загрузки</li>';
+      if (casesAccordion) {
+        casesAccordion.innerHTML =
+          '<div class="text-danger">Ошибка загрузки кейсов</div>';
+      }
     }
   }
+
   loadCases();
 }
 
@@ -190,54 +282,48 @@ function renderCaseDetailsById(caseId) {
   caseDetails.classList.remove("d-none");
 }
 
-// ===== простая анимация прогресса (до ~85%) =====
-let submitProgressTimer = null;
-function startSubmitProgress() {
-  const bar = document.getElementById("submitProgress");
-  const wrap = document.getElementById("submitStatus");
-  const txt  = document.getElementById("submitStatusText");
-  if (!bar || !wrap) return;
-
-  // показать индикатор
-  wrap.classList.remove("d-none");
-  if (txt) txt.textContent = "Мы отправили ваше решение на оценку…";
-
-  // сброс ширины
-  bar.style.width = "10%";
-  bar.setAttribute("aria-valuenow", "10");
-
-  const maxHold = 85;     // держим на ~85% пока ждём сервер
-  const stepMs  = 200;    // каждые 200мс плавно увеличиваем
-  const stepPx  = 2;      // шаг 2%
-
-  clearInterval(submitProgressTimer);
-  submitProgressTimer = setInterval(() => {
-    const cur = parseInt(bar.style.width || "0", 10);
-    if (cur < maxHold) {
-      const next = Math.min(maxHold, cur + stepPx);
-      bar.style.width = next + "%";
-      bar.setAttribute("aria-valuenow", String(next));
+// ------- простая анимация прогресса отправки -------
+let submitProgTimer = null;
+function getSubmitProgressEl() {
+  return document.getElementById("submitProgress");
+}
+function startProgress() {
+  const bar = getSubmitProgressEl();
+  if (!bar) return;
+  // Убираем любой текст внутри полосы
+  bar.textContent = "";
+  let width = 25;           // стартовая ширина совпадает с версткой
+  const target = 85;        // ползёт до ~85% пока ждём ответ
+  bar.style.width = width + "%";
+  clearInterval(submitProgTimer);
+  submitProgTimer = setInterval(() => {
+    // чем ближе к таргету, тем медленнее
+    width += Math.max(0.5, (target - width) * 0.05);
+    if (width >= target) width = target;
+    bar.style.width = width.toFixed(1) + "%";
+    if (width >= target) {
+      clearInterval(submitProgTimer);
+      submitProgTimer = null;
     }
-  }, stepMs);
+  }, 120);
+}
+function finishProgress() {
+  const bar = getSubmitProgressEl();
+  if (!bar) return;
+  clearInterval(submitProgTimer);
+  submitProgTimer = null;
+  bar.style.width = "100%";
+}
+function resetProgress() {
+  const bar = getSubmitProgressEl();
+  if (!bar) return;
+  clearInterval(submitProgTimer);
+  submitProgTimer = null;
+  bar.style.width = "25%";
 }
 
-function finishSubmitProgress(ok = true) {
-  const bar = document.getElementById("submitProgress");
-  const wrap = document.getElementById("submitStatus");
-  const txt  = document.getElementById("submitStatusText");
-  clearInterval(submitProgressTimer);
+// ----------------------------------------------------
 
-  if (bar) {
-    bar.style.width = "100%";
-    bar.setAttribute("aria-valuenow", "100");
-  }
-  if (txt) {
-    txt.textContent = ok ? "Оценка получена. Открываем результат…" : "Произошла ошибка при отправке.";
-  }
-  // скрывать индикатор не обязательно — при успехе будет переход на /result
-}
-
-// основной блок Submit
 if (submitForm && caseSelect) {
   // запрет нативного сабмита
   submitForm.addEventListener("submit", (e) => {
@@ -313,21 +399,30 @@ if (submitForm && caseSelect) {
     try {
       sendingSubmit = true;
       if (btn) { btn.disabled = true; btn.textContent = "Отправка…"; }
+      document.getElementById("submitStatus")?.classList.remove("d-none");
+      const txt = document.getElementById("submitStatusText");
+      if (txt) txt.textContent = "Мы отправили ваше решение на оценку…";
+      startProgress();
 
-      startSubmitProgress(); // <<< запускаем индикатор
-
-      // Длинный таймаут и без ретраев — чтобы не было дублей
       const res = await apiPost("/submit_solution", formData, { timeoutMs: 90000, retries: 0 });
       if (!res?.session_id) throw new Error("Некорректный ответ API: нет session_id");
 
-      finishSubmitProgress(true); // <<< доводим до 100%
-      window.location.assign(`/result/${res.session_id}`);
+      finishProgress();
+      // небольшая задержка для визуального завершения, затем переход
+      setTimeout(() => {
+        window.location.assign(`/result/${res.session_id}`);
+      }, 150);
     } catch (err) {
       const msg = String(err?.message || err || "");
+      const txt = document.getElementById("submitStatusText");
+      if (txt) txt.textContent = "Ошибка: " + msg;
+      finishProgress();
       alert("Ошибка отправки решения: " + msg);
-      finishSubmitProgress(false); // <<< доводим до 100% и оставляем сообщение
-      // можно спрятать полоску через пару секунд, если хочешь:
-      setTimeout(() => document.getElementById("submitStatus")?.classList.add("d-none"), 2500);
+      // спрячем полосу через секунду, чтобы юзер увидел 100%
+      setTimeout(() => {
+        document.getElementById("submitStatus")?.classList.add("d-none");
+        resetProgress();
+      }, 800);
     } finally {
       sendingSubmit = false;
       if (btn) { btn.disabled = false; btn.textContent = "Отправить"; }
@@ -365,7 +460,7 @@ function renderEvaluation(container, data) {
     data.skills.forEach((s) => {
       const card = el("div", "card mb-3");
       const body = el("div", "card-body");
-      const title = el("h6", "card-title mb-3", `${s.name ?? s.skill ?? "Навык"} — ${s.skill_score ?? "-"}`);
+      const title = el("h6", "card-title mb-3", `${s.name ?? "Навык"} — ${s.skill_score ?? "-"}`);
       body.appendChild(title);
 
       // Таблица критериев (3 колонки)
