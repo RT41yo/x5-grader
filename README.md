@@ -69,7 +69,7 @@ prompt_vars = {
         "output_type": "chat",
         "tweaks": {
             "Prompt-EVAL": prompt_vars,
-            **prompt_vars  # на случай если flow сконфигурят иначе
+            **prompt_vars
         }
     }
 ```
