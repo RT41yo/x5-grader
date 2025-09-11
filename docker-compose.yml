@@ -1,0 +1,90 @@
+services:
+  postgres:
+    image: postgres:16
+    container_name: x5_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${PG_USER}
+      POSTGRES_PASSWORD: ${PG_PASSWORD}
+      POSTGRES_DB: ${PG_DB}
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+      - ./infra/postgres/init:/docker-entrypoint-initdb.d:ro
+    ports:
+      - "5432:5432" # при желании закройте наружу на VPS (оставьте только внутри сети)
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${PG_USER} -d ${PG_DB} || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  langflow:
+    image: langflowai/langflow:latest
+    container_name: x5_langflow
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      LANGFLOW_DATABASE_URL: "postgresql://${PG_USER}:${PG_PASSWORD}@postgres:5432/langflow"
+      LANGFLOW_LOAD_FLOWS_PATH: "/flows"
+      WEB_CONCURRENCY: "1"
+      TIMEOUT: "180"
+      DO_NOT_TRACK: "true"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - ./infra/langflow/flows:/flows:ro
+      - langflow_data:/root/.langflow
+    ports:
+      - "7860:7860" # для отладки UI; в проде можно закрыть наружу
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:7860/api/v1/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  api:
+    build: ./backend
+    container_name: x5_api
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      AUTO_CREATE_TABLES: "1"   # для демо; в проде используйте Alembic
+      # Параметры gunicorn можно переопределить здесь при необходимости:
+      GUNICORN_WORKERS: "2"
+      GUNICORN_TIMEOUT: "30"
+      GUNICORN_KEEPALIVE: "5"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      langflow:
+        condition: service_started
+    volumes:
+      - ./backend:/app
+    # Не публикуем наружу — доступ к API только через Nginx
+    # ports:
+    #   - "8000:8000"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:8000/api/health >/dev/null 2>&1 || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  nginx:
+    build: ./infra/nginx
+    container_name: x5_nginx
+    restart: unless-stopped
+    depends_on:
+      api:
+        condition: service_healthy
+      langflow:
+        condition: service_started
+    ports:
+      - "80:80"
+    # В проде можно добавить 443:443 и сертификаты
+    # volumes:
+    #   - ./infra/nginx/certs:/etc/nginx/certs:ro
+
+volumes:
+  pg_data:
+  langflow_data:

@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{{ page_title or "X5 AI Checker" }}</title>
+
+    <!-- Bootstrap 5 (CDN) -->
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+    />
+
+    <!-- Кастомный стиль X5 -->
+    <link rel="stylesheet" href="{{ url_for('web.static', filename='css/custom.css') }}" />
+  </head>
+  <body class="d-flex flex-column min-vh-100">
+
+    <!-- Навбар -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+      <div class="container-fluid">
+        <a class="navbar-brand d-flex align-items-center" href="{{ url_for('web.submit_page') }}">
+          <img 
+            src="{{ url_for('web.static', filename='img/fe4fc03b-535c-41c5-9333-7fc5fc562360-3225582819.jpeg') }}" 
+            alt="X5 Logo" 
+            width="32" 
+            height="32" 
+            class="d-inline-block align-text-top me-2 rounded-circle"
+          />
+          <span class="text-success fw-bold">X5 AI Checker</span>
+        </a>
+        <div>
+          <a class="nav-link d-inline-block text-white" href="{{ url_for('web.admin_page') }}">Админ</a>
+          <a class="nav-link d-inline-block text-white" href="{{ url_for('web.submit_page') }}">Решение</a>
+        </div>
+      </div>
+    </nav>
+
+    <!-- Контент -->
+    <main class="container my-4 flex-grow-1">
+      {% block content %}{% endblock %}
+    </main>
+
+    <!-- Футер -->
+    <footer class="bg-light text-center py-3 border-top">
+      <small class="text-muted">© 2025 X5 Group — AI Checker</small>
+    </footer>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="{{ url_for('web.static', filename='js/main.js') }}"></script>
+  </body>
+</html>
