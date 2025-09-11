@@ -107,16 +107,19 @@ prompt_vars = {
 
 ## 5. Потоки Langflow  
 
-- **Flow A** — первичная оценка решения кейса.  
+- **Flow A (agent with calculator)** — первичная оценка решения кейса с использованием агента (с инструментом "калькулятор").
+- **Flow A (custom script for evaluating)** — первичная оценка решения кейса с помощью кастомного компонента подсчета оценок. (Быстрее по скорости).
 - **Flow B** — чат для уточняющих вопросов.  
 
 Скриншоты:  
-![Flow A](infra/langflow/flows/Flow_A.png)  
+![Flow A](infra/langflow/flows/Flow_A_calculator.png)
+![Flow A](infra/langflow/flows/Flow_A_custom_component.png)
 ![Flow B](infra/langflow/flows/Flow_B.png)  
 
 JSON-файлы потоков:  
-- `infra/langflow/flows/Flow A(2).json`  
-- `infra/langflow/flows/Flow B(2).json`  
+- `infra/langflow/flows/Flow A calculator.json`  
+- `infra/langflow/flows/Flow A custom component.json`
+- `infra/langflow/flows/Flow B(2).json`
 
 ---
 
